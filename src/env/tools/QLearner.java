@@ -6,6 +6,7 @@ import java.util.logging.*;
 import cartago.Artifact;
 import cartago.OPERATION;
 import cartago.OpFeedbackParam;
+import jdk.jpackage.internal.Log;
 
 public class QLearner extends Artifact {
 
@@ -67,36 +68,42 @@ public class QLearner extends Artifact {
     public void calculateQ(Object[] goalDescription, Object episodes, Object alpha, Object gamma, Object epsilon,
                            Object reward) {
 
+        LOGGER.info("Called method calculateQ");
+
         // Initialize Q(s,a) arbitrarily
         double[][] qTable = initializeQTable();
 
         // loop for each episode
         for (int i = 0; i < Integer.valueOf(episodes.toString()); i++) {
-            System.out.println(episodes);
+            LOGGER.info(episodes.toString());
             // initialize S (and other variables)
             int s = lab.readCurrentState();
-            int sNew;
+            int sPrime;
             boolean terminal = terminalStateReached(goalDescription);
+            LOGGER.info("Terminal: " + terminal);
 
             // loop for each step of episode until S is terminal
             while (!terminal) {
+                LOGGER.info("While loop");
                 // Choose A from S using policy derived from Q
                 int action = getAction(s, Double.valueOf(epsilon.toString()), qTable);
 
                 // take action A, observe R, S'
                 lab.performAction(action);
-                sNew = lab.readCurrentState();
-                List<Integer> actionsNew = lab.getApplicableActions(sNew);
+                sPrime = lab.readCurrentState();
+                List<Integer> actionsNew = lab.getApplicableActions(sPrime);
                 terminal = terminalStateReached(goalDescription);
 
                 double actionReward = getReward(action, Double.valueOf(reward.toString()), terminal);
-                qTable[s][action] = qTable[s][action] + Double.valueOf(alpha.toString()) * (actionReward + Double.valueOf(gamma.toString()) * maxQ(qTable, sNew, actionsNew) - qTable[s][action]);
-                s = sNew;
-                log("STATE: " + s + " action: " + action + " reward: " + actionReward);
+                qTable[s][action] = qTable[s][action] + Double.valueOf(alpha.toString()) * (actionReward + Double.valueOf(gamma.toString()) * maxQ(qTable, sPrime, actionsNew) - qTable[s][action]);
+                s = sPrime;
+                LOGGER.info("STATE: " + s + " action: " + action + " reward: " + actionReward);
             }
-            printQTable(qTable);
+            LOGGER.info("Reached terminal state");
+            //printQTable(qTable);
         }
         qTables.put(goalDescription.hashCode(), qTable);
+        //printQTable(qTable);
     }
 
     private double maxQ(double[][] qTable, int s, List<Integer> actions) {
@@ -123,6 +130,7 @@ public class QLearner extends Artifact {
     }
 
     private int getAction(int s, double e, double[][] qTable) {
+        LOGGER.info("state s: " + s);
         List<Integer> actions = this.lab.getApplicableActions(s);
         int action = 0;
 
@@ -147,7 +155,7 @@ public class QLearner extends Artifact {
      */
     private Boolean terminalStateReached(Object[] goals) {
         for (int i = 0; i < goals.length; i++) {
-            if (lab.currentState.get(i) != Integer.parseInt(goals[i].toString()))
+            if (lab.currentState.get(i) != Integer.valueOf(goals[i].toString()))
                 return false;
         }
         return true;
