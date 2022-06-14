@@ -6,7 +6,6 @@ import java.util.logging.*;
 import cartago.Artifact;
 import cartago.OPERATION;
 import cartago.OpFeedbackParam;
-import jdk.jpackage.internal.Log;
 
 public class QLearner extends Artifact {
 
@@ -28,6 +27,32 @@ public class QLearner extends Artifact {
         LOGGER.info("Initialized with an action space of m=" + actionCount);
 
         qTables = new HashMap<>();
+    }
+
+    @OPERATION
+    public void getActionFromState(Object[] goalDescription, Object[] currentStateDescription, OpFeedbackParam<String> actionTag,
+                                   OpFeedbackParam<Object[]> payloadTags, OpFeedbackParam<Object[]> payload) {
+
+        List<Integer> currentStateDesc = new ArrayList<>();
+        for (int i = 0; i < currentStateDescription.length; i++) {
+            currentStateDesc.add(Integer.valueOf(currentStateDescription[i].toString()));
+        }
+
+        double[][] qTable = qTables.get(getGoalDescKey(goalDescription));
+
+        if (qTable != null) {
+            int currentState = new ArrayList<>(lab.stateSpace).indexOf(currentStateDesc);
+            List<Integer> actions = lab.getApplicableActions(currentState);
+            int selectedAction = getBestAction(actions, qTable, currentState);
+
+            Action action = lab.getAction(selectedAction);
+            actionTag.set(lab.getAction(selectedAction).getActionTag());
+            payload.set(action.getPayload());
+            payloadTags.set(action.getPayloadTags());
+        } else {
+            log("qTable is null.");
+        }
+        return;
     }
 
     /**
@@ -102,8 +127,17 @@ public class QLearner extends Artifact {
             LOGGER.info("Reached terminal state");
             //printQTable(qTable);
         }
-        qTables.put(goalDescription.hashCode(), qTable);
-        //printQTable(qTable);
+        qTables.put(getGoalDescKey(goalDescription), qTable);
+    }
+
+    @OPERATION
+    public void getCurrentState(OpFeedbackParam<Object[]> state) {
+        state.set(lab.currentState.toArray());
+    }
+
+    // Usage of this method thanks to Jonathan
+    private int getGoalDescKey(Object[] goalDescription) {
+        return Integer.valueOf(goalDescription[0].toString()) * 10 + Integer.valueOf(goalDescription[1].toString());
     }
 
     private double maxQ(double[][] qTable, int s, List<Integer> actions) {
@@ -139,12 +173,19 @@ public class QLearner extends Artifact {
         if (r.nextDouble() < e) {
             action = actions.get(r.nextInt(actions.size()));
         } else {
-            double maxValue = Double.MIN_VALUE;
-            for (int a : actions) {
-                if (qTable[s][a] > maxValue) {
-                    maxValue = qTable[s][a];
-                    action = a;
-                }
+            action = getBestAction(actions, qTable, s);
+
+        }
+        return action;
+    }
+
+    private int getBestAction(List<Integer> actions, double[][] qTable, int s) {
+        int action = 0;
+        double maxValue = Double.MIN_VALUE;
+        for (int a : actions) {
+            if (qTable[s][a] > maxValue) {
+                maxValue = qTable[s][a];
+                action = a;
             }
         }
         return action;

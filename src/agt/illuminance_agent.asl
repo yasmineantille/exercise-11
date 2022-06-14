@@ -4,6 +4,7 @@
 * Real lab URL: "https://raw.githubusercontent.com/Interactions-HSG/example-tds/was/tds/interactions-lab.ttl"
 */
 learning_lab_environment("https://raw.githubusercontent.com/Interactions-HSG/example-tds/was/tds/interactions-lab.ttl").
+//learning_lab_environment("https://raw.githubusercontent.com/Interactions-HSG/example-tds/was/tds/interactions-lab-real.ttl").
 task_requirements([2,3]).
 
 !start.
@@ -13,5 +14,21 @@ task_requirements([2,3]).
 <-
   .print("Lab environment URL: ", Url);
   .print("I want to achieve Z1Level=", Z1Level, " and Z2Level=",Z2Level);
-  makeArtifact("qlearner", "tools.QLearner", [Url], QlearnerId);
-  calculateQ([Z1Level, Z2Level], 1, 0.1, 0.5, 0.8, 150).
+  makeArtifact("qlearnerArt", "tools.QLearner", [Url], QlearnerArtId);
+  focus(QlearnerArtId);
+  calculateQ([Z1Level, Z2Level], 3, 0.9, 0.7, 0.1, 100);
+
+  makeArtifact("thingArt", "wot.ThingArtifact", [Url], ThingArtId);
+  focus(ThingArtId);
+
+  !action.
+
++!action: task_requirements([Z1Level, Z2Level])
+<-
+  .print("Getting current state");
+  getCurrentState(State);
+  .print("Goal state ", [Z1Level, Z2Level], " Current state ", State);
+  getActionFromState([Z1Level, Z2Level], State, ActionTag, PayloadTags, Payload);
+  invokeAction(ActionTag, PayloadTags, Payload);
+  .wait(60000);
+  !action.
